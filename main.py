@@ -2,9 +2,8 @@ import time
 from flask import Flask
 from multiprocessing import Process, Value
 import googlechat
-from podStatus import podStatus
+from podStatus import *
 import logging
-import sqlite3
 
 # import ipdb
 
@@ -16,25 +15,30 @@ nested_app_list = {
 					'mms-api-gateway': {'failed_count': 0},
 					'mms-centralize-config': {'failed_count': 0}
                 }
-#ipdb.set_trace()
-
-
 for app_name, failed_count in  nested_app_list.items():
     print(app_name, failed_count)
 
 @app.route('/pods', methods=['GET'])
 def pod_alert(loop_on):
-    for app_name, failed_count in nested_app_list.items():
-        print(app_name)
-        app1 = podStatus(app_name, failed_count)
-        while True:
-            gg_msg = app1.get_pods()
-            print(type(gg_msg))
-            if 'true' not in str(gg_msg):
-                googlechat.send_google_chat(gg_msg)
-            else:
-                pass
-            time.sleep(260)
+    while True:
+        try:
+            for app_name, failed_count in nested_app_list.items():
+                print(app_name)
+                pod_status = podStatus(app_name, failed_count)
+                shell_cmd = pod_status.shell_cmd()
+                print(shell_cmd)
+                gg_msg = pod_status.get_pods(shell_cmd)
+                print(type(gg_msg))
+                if 'true' not in str(gg_msg):
+                    pod_status.increase_count()
+                    failed_count = pod_status.get_failed_count()
+                    if failed_count[0] >= 3:
+                        googlechat.send_google_chat(gg_msg)
+                else:
+                    pod_status.reset_count()
+            time.sleep(300)
+        except:
+            print("Something wrong?")
     
 if __name__ == "__main__":
     recording_on = Value('b', True)
