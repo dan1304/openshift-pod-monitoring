@@ -1,50 +1,59 @@
-import time
 from flask import Flask
 from multiprocessing import Process, Value
-import googlechat
-from podStatus import *
+from PodDataCollect import *
+from PodStatusCheck import *
 import logging
-
-# import ipdb
+import ipdb
 
 app = Flask(__name__)
 logging.basicConfig(filename='app.log', level=logging.DEBUG, format=f'%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s')
 
 gg_msg = ''
-nested_app_list = {
-					'mms-api-gateway': {'failed_count': 0},
-					'mms-centralize-config': {'failed_count': 0}
-                }
-for app_name, failed_count in  nested_app_list.items():
-    print(app_name, failed_count)
+app_list_file = "app_list_to_check.txt"
 
-@app.route('/pods', methods=['GET'])
-def pod_alert(loop_on):
-    while True:
-        try:
-            for app_name, failed_count in nested_app_list.items():
-                print(app_name)
-                pod_status = podStatus(app_name, failed_count)
-                shell_cmd = pod_status.shell_cmd()
-                print(shell_cmd)
-                gg_msg = pod_status.get_pods(shell_cmd)
-                print(type(gg_msg))
-                if 'true' not in str(gg_msg):
-                    pod_status.increase_count()
-                    failed_count = pod_status.get_failed_count()
-                    if failed_count[0] >= 3:
-                        googlechat.send_google_chat(gg_msg)
-                else:
-                    pod_status.reset_count()
-            time.sleep(300)
-        except:
-            print("Something wrong?")
-    
+@app.route('/staging', methods=['GET'])
+def pod_alert_staging(loop_on):
+    staging_pods = PodStatusCheck(app_list_file, "equator-default-staging")
+    staging_pods.check_app_status()
+
+@app.route('/dev', methods=['GET'])
+def pod_alert_dev(loop_on):
+    dev_pods = PodStatusCheck(app_list_file, "equator-default-dev")
+    dev_pods.check_app_status()    
+
+@app.route('/release1', methods=['GET'])
+def pod_alert_release1(loop_on):
+    release1_pods = PodStatusCheck(app_list_file, "equator-default-release1")
+    release1_pods.check_app_status() 
+
+@app.route('/release2', methods=['GET'])
+def pod_alert_release2(loop_on):
+    release2_pods = PodStatusCheck(app_list_file, "equator-default-release2")
+    release2_pods.check_app_status()    
+
+@app.route('/performance', methods=['GET'])
+def pod_alert_performance(loop_on):
+    performance_pods = PodStatusCheck(app_list_file, "equator-default-performance")
+    performance_pods.check_app_status()    
+
 if __name__ == "__main__":
     recording_on = Value('b', True)
-    p = Process(target=pod_alert, args=(recording_on,))
-    p.start()  
+    # for env in ("equator-default-dev", "equator-default-release1", "equator-default-release2", "equator-default-staging" ):
+    p1 = Process(target=pod_alert_staging, args=(recording_on,))
+    p2 = Process(target=pod_alert_dev, args=(recording_on,))
+    p3 = Process(target=pod_alert_release1, args=(recording_on,))
+    p4 = Process(target=pod_alert_release2, args=(recording_on,))
+    p5 = Process(target=pod_alert_performance, args=(recording_on,))
+    p1.start() 
+    p2.start() 
+    p3.start()
+    p4.start()
+    p5.start()
     app.run(debug=True, use_reloader=False)
-    p.join()
+    p1.join()
+    p2.join()
+    p3.join()
+    p4.join()
+    p5.join()
 
        
