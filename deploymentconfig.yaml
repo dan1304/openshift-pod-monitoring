@@ -1,0 +1,55 @@
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  creationTimestamp: 2021-09-16T15:50:16Z
+  generation: 7
+  name: act-pod-monitoring
+  namespace: equator-default-release2
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    name: act-env-check
+  strategy:
+    activeDeadlineSeconds: 21600
+    resources: {}
+    rollingParams:
+      intervalSeconds: 1
+      maxSurge: 25%
+      maxUnavailable: 25%
+      timeoutSeconds: 600
+      updatePeriodSeconds: 1
+    type: Rolling
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        name: act-env-check
+    spec:
+      containers:
+      - image: quay.io/actvn/env-monitor:v2
+        imagePullPolicy: Always
+        name: act-env-check
+        ports:
+        - containerPort: 5000
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 800m
+            memory: 2Gi
+          requests:
+            cpu: 400m
+            memory: 2Gi
+          # securityContext:
+          #   capabilities: {}
+          #   privileged: true
+          #   runAsUser: 1000
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        # serviceAccount: acm-deployer
+        # serviceAccountName: acm-deployer
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+  test: false
+  triggers:
+  - type: ConfigChange

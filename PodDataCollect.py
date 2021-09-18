@@ -8,14 +8,12 @@ class PodDataCollect:
         self.environment = environment
 
     def shell_cmd(self):
-        self.oc_command = f"oc get pod -n {self.environment} -l appName={self.app_name} -o json '--sort-by=.status.containerStatuses[0].state.running.startedAt' \
-                  | jq -r '.items[0].status.containerStatuses[0].ready' "
+        self.oc_command = f"oc get pod -n {self.environment} --config /tmp/config -l appName={self.app_name} -o json '--sort-by=.status.containerStatuses[0].state.running.startedAt' \
+                  | jq -r '.items[0].status.containerStatuses[0].ready' "        
         return self.oc_command
 
     def get_pods(self, shell_cmd):
         self.pod_status = subprocess.check_output(shell_cmd, shell=True, stderr=subprocess.STDOUT)
-        print(self.app_name, self.failed_count, self.pod_status)
-        print(f"Shell Command To Run: {shell_cmd}")
         return self.pod_status
 
     def get_failed_count(self):
